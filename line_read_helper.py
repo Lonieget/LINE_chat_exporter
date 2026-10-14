@@ -11,10 +11,18 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+def app_base_dir() -> Path:
+    """Directory for CSV/JSON outputs: next to the .exe when frozen, else this script's folder."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+SCRIPT_DIR = app_base_dir()
 LOCAL_VENDOR_DIR = SCRIPT_DIR / "vendor"
 VENDOR_DIR = LOCAL_VENDOR_DIR if LOCAL_VENDOR_DIR.exists() else SCRIPT_DIR.parent / "work" / "vendor"
-sys.path.insert(0, str(VENDOR_DIR))
+if VENDOR_DIR.exists():
+    sys.path.insert(0, str(VENDOR_DIR))
 
 import apsw
 

@@ -15,6 +15,13 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 
 
+def app_base_dir() -> Path:
+    """Directory for CSV/XLSX next to the .exe when frozen, else this script's folder."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
 INDEX_PATTERN = "LINE_聊天室索引*.csv"
 MESSAGES_FILE = "LINE_全部聊天.csv"
 INDEX_REQUIRED = {"聊天室名稱", "聊天室ID", "類型", "訊息數"}
@@ -307,7 +314,7 @@ class LineChatExporter(tk.Tk):
         ttk.Label(bottom, textvariable=self.status_var).pack(side="right", padx=(0, 14))
 
     def auto_load(self):
-        index_path, messages_path = find_input_files(Path(__file__).resolve().parent)
+        index_path, messages_path = find_input_files(app_base_dir())
         if index_path and messages_path:
             self.load_files(index_path, messages_path)
         else:
@@ -404,8 +411,8 @@ class LineChatExporter(tk.Tk):
         self.status_var.set(f"已載入 {len(self.records)} 個聊天室，已勾選 {len(self.selected_ids)} 個")
 
     def start_update(self):
-        helper = Path(__file__).resolve().parent / "line_read_helper.py"
-        if not helper.exists():
+        helper = app_base_dir() / "line_read_helper.py"
+        if not getattr(sys, "frozen", False) and not helper.exists():
             messagebox.showerror("無法更新", f"找不到更新程式：\n{helper}")
             return
         self.update_button.config(state="disabled")
@@ -416,25 +423,36 @@ class LineChatExporter(tk.Tk):
 
     def _update_worker(self, helper):
         try:
-            base = Path(__file__).resolve().parent
-            local_vendor = base / "vendor"
-            vendor = local_vendor if local_vendor.exists() else base.parent.parent / "work" / "vendor"
-            environment = os.environ.copy()
-            existing = environment.get("PYTHONPATH", "")
-            environment["PYTHONPATH"] = str(vendor) + (os.pathsep + existing if existing else "")
-            result = subprocess.run(
-                [sys.executable, str(helper), "--export-all"],
-                cwd=str(base),
-                env=environment,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-            if result.returncode != 0:
-                details = (result.stdout + "\n" + result.stderr).strip()
-                raise RuntimeError(details or "LINE 資料更新失敗。")
+            base = app_base_dir()
+            if getattr(sys, "frozen", False):
+                import line_read_helper
+
+                old_argv = sys.argv
+                try:
+                    sys.argv = [sys.argv[0], "--export-all"]
+                    line_read_helper.main()
+                finally:
+                    sys.argv = old_argv
+            else:
+                local_vendor = base / "vendor"
+                vendor = local_vendor if local_vendor.exists() else base.parent.parent / "work" / "vendor"
+                environment = os.environ.copy()
+                if vendor.exists():
+                    existing = environment.get("PYTHONPATH", "")
+                    environment["PYTHONPATH"] = str(vendor) + (os.pathsep + existing if existing else "")
+                result = subprocess.run(
+                    [sys.executable, str(helper), "--export-all"],
+                    cwd=str(base),
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+                if result.returncode != 0:
+                    details = (result.stdout + "\n" + result.stderr).strip()
+                    raise RuntimeError(details or "LINE 資料更新失敗。")
             index_path = base / "LINE_聊天室索引.csv"
             messages_path = base / MESSAGES_FILE
             self.after(0, self._update_success, index_path, messages_path)
@@ -503,7 +521,7 @@ class LineChatExporter(tk.Tk):
 
 
 def self_test():
-    base = Path(__file__).resolve().parent
+    base = app_base_dir()
     index_path, messages_path = find_input_files(base)
     if not index_path or not messages_path:
         raise RuntimeError("找不到測試所需的索引或聊天 CSV。")
