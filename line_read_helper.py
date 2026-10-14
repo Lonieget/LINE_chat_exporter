@@ -1,6 +1,9 @@
+import base64
 import ctypes
 import ctypes.wintypes as wt
 import csv
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -9,6 +12,10 @@ import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import hashes
 
 
 def app_base_dir() -> Path:
@@ -231,16 +238,153 @@ def inventory(path, key, settings):
         connection.close()
 
 
+TAIPEI = timezone(timedelta(hours=8))
+IMAGES_DIR_NAME = "圖片"
+EXPORTS_DIR_NAME = "exports"
+LATEST_RUN_MARKER = "latest_run.txt"
+
+
+def create_export_run_dir(base_dir=None) -> Path:
+    """Create exports/LINE_匯出_YYYYMMDD_HHMMSS/圖片 for one update run."""
+    root = Path(base_dir) if base_dir else app_base_dir()
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = root / EXPORTS_DIR_NAME / f"LINE_匯出_{stamp}"
+    (run_dir / IMAGES_DIR_NAME).mkdir(parents=True, exist_ok=False)
+    marker = root / EXPORTS_DIR_NAME / LATEST_RUN_MARKER
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(str(run_dir.resolve()), encoding="utf-8")
+    return run_dir
+
+
+def _parse_json_object(value):
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    try:
+        parsed = json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _image_extension_from_bytes(data: bytes) -> str | None:
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def decrypt_line_media(data: bytes, key_material) -> bytes | None:
+    """Decrypt LINE sealed media/thumbnail (.eimg) using contentInfo.keyMaterial."""
+    if not data or not key_material:
+        return None
+    try:
+        if isinstance(key_material, str):
+            raw = base64.b64decode(key_material)
+        else:
+            raw = bytes(key_material)
+    except (ValueError, TypeError):
+        return None
+    if len(raw) < 16:
+        return None
+    try:
+        derived = HKDF(
+            algorithm=hashes.SHA256(),
+            length=76,
+            salt=None,
+            info=b"FileEncryption",
+        ).derive(raw)
+    except Exception:
+        return None
+    enc_key, mac_key, nonce = derived[:32], derived[32:64], derived[64:76]
+    body = data
+    if len(data) > 32:
+        expected = hmac.new(mac_key, data[:-32], hashlib.sha256).digest()
+        if hmac.compare_digest(expected, data[-32:]):
+            body = data[:-32]
+        else:
+            # Some cache files still decrypt after stripping an unverified tag.
+            body = data[:-32]
+    iv = nonce + b"\x00\x00\x00\x00"
+    try:
+        decryptor = Cipher(algorithms.AES(enc_key), modes.CTR(iv)).decryptor()
+        plain = decryptor.update(body) + decryptor.finalize()
+    except Exception:
+        return None
+    if _image_extension_from_bytes(plain):
+        return plain
+    # Retry without stripping HMAC if the strip path failed to look like an image.
+    if body is not data:
+        try:
+            decryptor = Cipher(algorithms.AES(enc_key), modes.CTR(iv)).decryptor()
+            plain = decryptor.update(data) + decryptor.finalize()
+            if _image_extension_from_bytes(plain):
+                return plain
+        except Exception:
+            return None
+    return None
+
+
+def copy_cached_image(message_id, content_info, images_dir: Path):
+    """Copy/decrypt LINE cache thumb for an image message into images_dir.
+
+    Returns (relative_path_or_None, status_label).
+    """
+    info = _parse_json_object(content_info)
+    thumb = info.get("thumbPath") or info.get("filePath") or info.get("localPath")
+    if not thumb:
+        return None, "圖片（快取未找到）"
+    source = Path(str(thumb))
+    if not source.is_file():
+        return None, "圖片（快取未找到）"
+
+    try:
+        data = source.read_bytes()
+    except OSError:
+        return None, "圖片（快取讀取失敗）"
+
+    plain = decrypt_line_media(data, info.get("keyMaterial"))
+    payload = plain if plain is not None else data
+    ext = _image_extension_from_bytes(payload) or ".eimg"
+    safe_id = re.sub(r"[^\w.-]+", "_", str(message_id)).strip("._") or "image"
+    target_name = f"{safe_id}{ext}"
+    target = images_dir / target_name
+    try:
+        target.write_bytes(payload)
+    except OSError:
+        return None, "圖片（寫入失敗）"
+
+    relative = f"{IMAGES_DIR_NAME}/{target_name}"
+    if plain is not None:
+        return relative, "圖片"
+    if ext == ".eimg":
+        return relative, "圖片（未解密）"
+    return relative, "圖片"
+
+
 def iso_time(value):
     if not value:
         return None
-
-
-TAIPEI = timezone(timedelta(hours=8))
+    try:
+        seconds = value / 1000 if value > 10_000_000_000 else value
+        return datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
+    except (ValueError, OSError, TypeError):
+        return None
 
 
 def taipei_time(value):
     if not value:
+        return ""
+    try:
+        seconds = value / 1000 if value > 10_000_000_000 else value
+        return datetime.fromtimestamp(seconds, tz=TAIPEI).strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, OSError, TypeError):
         return ""
 
 
@@ -251,16 +395,14 @@ def excel_safe(value):
     if text.startswith(("=", "+", "-", "@")):
         return "'" + text
     return text
-    try:
-        seconds = value / 1000 if value > 10_000_000_000 else value
-        return datetime.fromtimestamp(seconds, tz=TAIPEI).strftime("%Y-%m-%d %H:%M:%S")
-    except (ValueError, OSError, TypeError):
-        return ""
-    try:
-        seconds = value / 1000 if value > 10_000_000_000 else value
-        return datetime.fromtimestamp(seconds, tz=timezone.utc).isoformat()
-    except (ValueError, OSError, TypeError):
-        return None
+
+
+def content_type_label(content_type, message_text, image_status=None):
+    if content_type in (1, "1"):
+        return image_status or "圖片"
+    if message_text:
+        return "文字"
+    return f"非文字（{content_type}）"
 
 
 def chat_summary(path, key, settings):
@@ -441,7 +583,7 @@ def export_chat(path, key, settings, requested_name):
         connection.close()
 
 
-def export_all_chats(path, key, settings):
+def export_all_chats(path, key, settings, run_dir=None):
     connection = apsw.Connection(str(path))
     try:
         cipher, legacy, key_pragma = settings
@@ -450,7 +592,11 @@ def export_all_chats(path, key, settings):
         own_mid_row = cursor.execute("SELECT _mid FROM _profile LIMIT 1").fetchone()
         own_mid = own_mid_row[0] if own_mid_row else None
 
-        index_path = SCRIPT_DIR / "LINE_聊天室索引.csv"
+        run_dir = Path(run_dir) if run_dir else create_export_run_dir()
+        images_dir = run_dir / IMAGES_DIR_NAME
+        images_dir.mkdir(parents=True, exist_ok=True)
+
+        index_path = run_dir / "LINE_聊天室索引.csv"
         with index_path.open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow([
@@ -496,8 +642,9 @@ def export_all_chats(path, key, settings):
                     taipei_time(oldest), taipei_time(newest),
                 ])
 
-        messages_path = SCRIPT_DIR / "LINE_全部聊天.csv"
+        messages_path = run_dir / "LINE_全部聊天.csv"
         count = 0
+        image_copied = 0
         with messages_path.open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow([
@@ -527,7 +674,8 @@ def export_all_chats(path, key, settings):
                        ) AS sender_name,
                        m._contentType,
                        m._text,
-                       m._id
+                       m._id,
+                       m._contentInfo
                 FROM _message AS m
                 LEFT JOIN _chat AS c ON c._id = m._chatId
                 LEFT JOIN _contact AS chat_contact ON chat_contact._mid = c._id
@@ -537,17 +685,36 @@ def export_all_chats(path, key, settings):
                 ORDER BY m._createdTime, m._id
                 """
             )
-            for chat_name, chat_id, created, sender_mid, sender_name, content_type, message_text, message_id in message_rows:
+            for (
+                chat_name,
+                chat_id,
+                created,
+                sender_mid,
+                sender_name,
+                content_type,
+                message_text,
+                message_id,
+                content_info,
+            ) in message_rows:
                 direction = "傳出" if own_mid and sender_mid == own_mid else "收到"
                 sender = "我" if direction == "傳出" else sender_name
-                kind = "文字" if message_text else f"非文字（{content_type}）"
+                content_value = message_text
+                image_status = None
+                if content_type in (1, "1"):
+                    relative, image_status = copy_cached_image(message_id, content_info, images_dir)
+                    if relative:
+                        content_value = relative
+                        image_copied += 1
+                    else:
+                        content_value = image_status
+                kind = content_type_label(content_type, message_text, image_status)
                 writer.writerow([
                     excel_safe(chat_name), chat_id, taipei_time(created), direction,
                     excel_safe(sender), sender_mid, kind,
-                    excel_safe(message_text), message_id,
+                    excel_safe(content_value), message_id,
                 ])
                 count += 1
-        return messages_path, index_path, count
+        return messages_path, index_path, count, run_dir, image_copied
     finally:
         connection.close()
 
@@ -597,9 +764,13 @@ def main():
             export_path, export_count = export_chat(db_path, key, settings, sys.argv[2])
             print(f"完整聊天：{export_path}（{export_count} 則）")
         elif len(sys.argv) >= 2 and sys.argv[1] == "--export-all":
-            messages_path, index_path, export_count = export_all_chats(db_path, key, settings)
+            messages_path, index_path, export_count, run_dir, image_copied = export_all_chats(
+                db_path, key, settings
+            )
             print(f"全部聊天：{messages_path}（{export_count} 則）")
             print(f"聊天室索引：{index_path}")
+            print(f"圖片檔案：{image_copied} 個 → {run_dir / IMAGES_DIR_NAME}")
+            print(f"RUN_DIR={run_dir}")
     finally:
         shutil.rmtree(snapshot_dir, ignore_errors=True)
 

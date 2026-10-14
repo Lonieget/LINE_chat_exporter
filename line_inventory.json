@@ -1,0 +1,648 @@
+{
+  "status": "ok",
+  "database": "qw8e3df88d244230d458bf03e90aad81.edb",
+  "tables": [
+    {
+      "name": "_buddyDetail",
+      "rows": 161,
+      "columns": [
+        "_mid",
+        "_memberCount",
+        "_onAir",
+        "_businessAccount",
+        "_addable",
+        "_acceptableContentTypes",
+        "_capableMyhome",
+        "_freePhoneCallable",
+        "_phoneNumberToDial",
+        "_needPermissionApproval",
+        "_channelId",
+        "_channelProviderName",
+        "_iconType",
+        "_botType",
+        "_showRichMenu",
+        "_richMenuRevision",
+        "_onAirLabel",
+        "_onAirVersion",
+        "_useTheme",
+        "_themeId",
+        "_useBar",
+        "_barRevision",
+        "_useBackground",
+        "_backgroundId",
+        "_statusBarEnabled",
+        "_statusBarRevision",
+        "_searchId",
+        "_blockable",
+        "_botActiveStatus",
+        "_membershipEnabled",
+        "_legalCountryCode",
+        "_botTalkroomAds",
+        "_botOaCallDetail",
+        "_aiChatBot",
+        "_supportSpeechToText",
+        "_voomEnabled",
+        "_buddyCautionNoticeFromCMS",
+        "_region",
+        "_serviceMenuBar",
+        "_brandType",
+        "_verifiedIconType",
+        "_lineWorks",
+        "_revision"
+      ],
+      "schema": "CREATE TABLE _buddyDetail(_mid TEXT, _memberCount INTEGER, _onAir INTEGER, _businessAccount INTEGER, _addable INTEGER, _acceptableContentTypes TEXT, _capableMyhome INTEGER, _freePhoneCallable INTEGER, _phoneNumberToDial TEXT, _needPermissionApproval INTEGER, _channelId INTEGER, _channelProviderName TEXT, _iconType INTEGER, _botType INTEGER, _showRichMenu INTEGER, _richMenuRevision INTEGER, _onAirLabel INTEGER, _onAirVersion INTEGER, _useTheme INTEGER, _themeId TEXT, _useBar INTEGER, _barRevision INTEGER, _useBackground INTEGER, _backgroundId TEXT, _statusBarEnabled INTEGER, _statusBarRevision INTEGER, _searchId TEXT, _blockable INTEGER, _botActiveStatus INTEGER, _membershipEnabled INTEGER, _legalCountryCode TEXT, _botTalkroomAds TEXT, _botOaCallDetail TEXT, _aiChatBot INTEGER, _supportSpeechToText INTEGER, _voomEnabled INTEGER, _buddyCautionNoticeFromCMS TEXT, _region TEXT, _serviceMenuBar TEXT, _brandType INTEGER, _verifiedIconType INTEGER, _lineWorks INTEGER, _revision INTEGER, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_buddyStatusBar",
+      "rows": 0,
+      "columns": [
+        "_label",
+        "_displayType",
+        "_title",
+        "_iconUrl",
+        "_linkUrl",
+        "_mid",
+        "_revision"
+      ],
+      "schema": "CREATE TABLE _buddyStatusBar(_label TEXT, _displayType INTEGER, _title TEXT, _iconUrl TEXT, _linkUrl TEXT, _mid TEXT, _revision INTEGER, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_channelToken",
+      "rows": 6,
+      "columns": [
+        "_channelId",
+        "_channelAccessToken",
+        "_expiration",
+        "_obsToken",
+        "_refreshToken",
+        "_token"
+      ],
+      "schema": "CREATE TABLE _channelToken(_channelId TEXT, _channelAccessToken TEXT, _expiration INTEGER, _obsToken TEXT, _refreshToken TEXT, _token TEXT, PRIMARY KEY ( _channelId ) )"
+    },
+    {
+      "name": "_chat",
+      "rows": 425,
+      "columns": [
+        "_id",
+        "_midType",
+        "_lastMessage",
+        "_lastUpdatedTime",
+        "_sendChatCheckedId",
+        "_messageBoxNextId",
+        "_unreadCount",
+        "_onAir",
+        "_showMember",
+        "_status",
+        "_memberHistory",
+        "_lastReceivedOpRev",
+        "_announcement",
+        "_firstUnreadId",
+        "_messageBoxNextCreatedTime",
+        "_lastSyncToken",
+        "_mediaMessageFlow",
+        "_messageEditNotice"
+      ],
+      "schema": "CREATE TABLE _chat(_id TEXT, _midType INTEGER, _lastMessage TEXT, _lastUpdatedTime INTEGER, _sendChatCheckedId TEXT, _messageBoxNextId INTEGER, _unreadCount INTEGER, _onAir INTEGER, _showMember INTEGER, _status INTEGER, _memberHistory TEXT, _lastReceivedOpRev INTEGER, _announcement TEXT, _firstUnreadId TEXT, _messageBoxNextCreatedTime INTEGER, _lastSyncToken TEXT, _mediaMessageFlow TEXT, _messageEditNotice TEXT, PRIMARY KEY ( _id ) )"
+    },
+    {
+      "name": "_chatE2EEPublicKeys",
+      "rows": 236,
+      "columns": [
+        "_chatId",
+        "_publicKeys",
+        "_e2eeEnabled",
+        "_allowedTypes",
+        "_specVersion",
+        "_chatCounter",
+        "_lastNegotiationTime"
+      ],
+      "schema": "CREATE TABLE _chatE2EEPublicKeys(_chatId TEXT, _publicKeys TEXT, _e2eeEnabled INTEGER, _allowedTypes TEXT, _specVersion INTEGER, _chatCounter INTEGER, _lastNegotiationTime INTEGER, PRIMARY KEY ( _chatId ) )"
+    },
+    {
+      "name": "_chatOption",
+      "rows": 168,
+      "columns": [
+        "_id",
+        "_hidden",
+        "_notification",
+        "_pinnedTime",
+        "_utilityData"
+      ],
+      "schema": "CREATE TABLE _chatOption(_id TEXT, _hidden INTEGER, _notification INTEGER, _pinnedTime INTEGER, _utilityData TEXT, PRIMARY KEY ( _id ) )"
+    },
+    {
+      "name": "_contact",
+      "rows": 1543,
+      "columns": [
+        "_mid",
+        "_createdTime",
+        "_type",
+        "_status",
+        "_displayName",
+        "_displayNameOverridden",
+        "_phoneDisplayName",
+        "_pictureStatus",
+        "_thumbnailUrl",
+        "_statusMessage",
+        "_favoriteTime",
+        "_attributes",
+        "_settings",
+        "_picturePath",
+        "_recordId",
+        "_addedTime",
+        "_recommendParams",
+        "_unregisteredContact",
+        "_videoProfile",
+        "_musicProfile",
+        "_profileUpdateSign",
+        "_statusMessageContentMetadata",
+        "_userType",
+        "_targetProfileDetail",
+        "_friendDetail",
+        "_blockDetail",
+        "_recommendationOrNot",
+        "_notificationSettingEntry"
+      ],
+      "schema": "CREATE TABLE _contact(_mid TEXT, _createdTime INTEGER, _type INTEGER, _status INTEGER, _displayName TEXT, _displayNameOverridden TEXT, _phoneDisplayName TEXT, _pictureStatus TEXT, _thumbnailUrl TEXT, _statusMessage TEXT, _favoriteTime INTEGER, _attributes INTEGER, _settings INTEGER, _picturePath TEXT, _recordId TEXT, _addedTime INTEGER, _recommendParams TEXT, _unregisteredContact INTEGER, _videoProfile TEXT, _musicProfile TEXT, _profileUpdateSign INTEGER, _statusMessageContentMetadata TEXT, _userType INTEGER, _targetProfileDetail TEXT, _friendDetail TEXT, _blockDetail TEXT, _recommendationOrNot TEXT, _notificationSettingEntry TEXT, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_groupChat",
+      "rows": 46,
+      "columns": [
+        "_type",
+        "_chatMid",
+        "_createdTime",
+        "_notificationDisabled",
+        "_favoriteTimestamp",
+        "_chatName",
+        "_picturePath",
+        "_extra",
+        "_status",
+        "_addedTime",
+        "_inviterMId"
+      ],
+      "schema": "CREATE TABLE _groupChat(_type INTEGER, _chatMid TEXT, _createdTime INTEGER, _notificationDisabled INTEGER, _favoriteTimestamp INTEGER, _chatName TEXT, _picturePath TEXT, _extra TEXT, _status INTEGER, _addedTime INTEGER, _inviterMId TEXT, PRIMARY KEY ( _chatMid ) )"
+    },
+    {
+      "name": "_group_call",
+      "rows": 18,
+      "columns": [
+        "_chat_id",
+        "_online",
+        "_video",
+        "_live"
+      ],
+      "schema": "CREATE TABLE _group_call(_chat_id TEXT, _online INTEGER, _video INTEGER, _live INTEGER, PRIMARY KEY ( _chat_id ) )"
+    },
+    {
+      "name": "_message",
+      "rows": 116788,
+      "columns": [
+        "_from",
+        "_to",
+        "_toType",
+        "_id",
+        "_createdTime",
+        "_deliveredTime",
+        "_text",
+        "_location",
+        "_hasContent",
+        "_contentType",
+        "_contentMetadata",
+        "_contentPreview",
+        "_sessionId",
+        "_chunks",
+        "_relatedMessageId",
+        "_messageRelationType",
+        "_readCount",
+        "_relatedMessageServiceCode",
+        "_appExtensionType",
+        "_reactions",
+        "_type",
+        "_status",
+        "_chatId",
+        "_reqSeqV2",
+        "_reqSeq",
+        "_contentInfo",
+        "_eventInfo",
+        "_rev",
+        "_errorCode",
+        "_urlPreview",
+        "_hasUrlPreview",
+        "_syncToken",
+        "_fromType",
+        "_attribute",
+        "_flag",
+        "_reactionStatus"
+      ],
+      "schema": "CREATE TABLE _message(_from TEXT, _to TEXT, _toType INTEGER, _id TEXT, _createdTime INTEGER, _deliveredTime INTEGER, _text TEXT, _location TEXT, _hasContent INTEGER, _contentType INTEGER, _contentMetadata TEXT, _contentPreview TEXT, _sessionId INTEGER, _chunks TEXT, _relatedMessageId TEXT, _messageRelationType INTEGER, _readCount INTEGER, _relatedMessageServiceCode INTEGER, _appExtensionType INTEGER, _reactions TEXT, _type INTEGER, _status INTEGER, _chatId TEXT, _reqSeqV2 INTEGER, _reqSeq INTEGER, _contentInfo TEXT, _eventInfo TEXT, _rev INTEGER, _errorCode INTEGER, _urlPreview TEXT, _hasUrlPreview INTEGER, _syncToken TEXT, _fromType INTEGER, _attribute INTEGER, _flag INTEGER, _reactionStatus TEXT, PRIMARY KEY ( _id ) )"
+    },
+    {
+      "name": "_message_fts",
+      "rows": 116827,
+      "columns": [
+        "_text"
+      ],
+      "schema": "CREATE VIRTUAL TABLE _message_fts USING FTS4 (_text TEXT)"
+    },
+    {
+      "name": "_message_fts_content",
+      "rows": 116827,
+      "columns": [
+        "docid",
+        "c0_text"
+      ],
+      "schema": "CREATE TABLE '_message_fts_content'(docid INTEGER PRIMARY KEY, 'c0_text')"
+    },
+    {
+      "name": "_message_fts_docsize",
+      "rows": 116827,
+      "columns": [
+        "docid",
+        "size"
+      ],
+      "schema": "CREATE TABLE '_message_fts_docsize'(docid INTEGER PRIMARY KEY, size BLOB)"
+    },
+    {
+      "name": "_message_fts_segdir",
+      "rows": 34,
+      "columns": [
+        "level",
+        "idx",
+        "start_block",
+        "leaves_end_block",
+        "end_block",
+        "root"
+      ],
+      "schema": "CREATE TABLE '_message_fts_segdir'(level INTEGER,idx INTEGER,start_block INTEGER,leaves_end_block INTEGER,end_block INTEGER,root BLOB,PRIMARY KEY(level, idx))"
+    },
+    {
+      "name": "_message_fts_segments",
+      "rows": 1812,
+      "columns": [
+        "blockid",
+        "block"
+      ],
+      "schema": "CREATE TABLE '_message_fts_segments'(blockid INTEGER PRIMARY KEY, block BLOB)"
+    },
+    {
+      "name": "_message_fts_stat",
+      "rows": 1,
+      "columns": [
+        "id",
+        "value"
+      ],
+      "schema": "CREATE TABLE '_message_fts_stat'(id INTEGER PRIMARY KEY, value BLOB)"
+    },
+    {
+      "name": "_message_sticker",
+      "rows": 0,
+      "columns": [
+        "_packageId",
+        "_stickerId",
+        "_message"
+      ],
+      "schema": "CREATE TABLE _message_sticker(_packageId INTEGER, _stickerId INTEGER, _message TEXT, PRIMARY KEY ( _packageId, _stickerId ) )"
+    },
+    {
+      "name": "_meta_info",
+      "rows": 27,
+      "columns": [
+        "m_n",
+        "m_v",
+        "m_p",
+        "m_s",
+        "m_c",
+        "m_i",
+        "m_f",
+        "m_d"
+      ],
+      "schema": "CREATE TABLE _meta_info ( m_n varchar(50) PRIMARY KEY, m_v INTEGER, m_p TEXT, m_s TEXT, m_c TEXT, m_i TEXT, m_f TEXT, m_d TEXT )"
+    },
+    {
+      "name": "_myE2EEKeyChain",
+      "rows": 1,
+      "columns": [
+        "_mid",
+        "_e2eeKeyChain",
+        "_validation"
+      ],
+      "schema": "CREATE TABLE _myE2EEKeyChain(_mid TEXT, _e2eeKeyChain TEXT, _validation INTEGER, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_profile",
+      "rows": 1,
+      "columns": [
+        "_allowSearchByEmail",
+        "_allowSearchByUserid",
+        "_displayName",
+        "_email",
+        "_mid",
+        "_phone",
+        "_phoneticName",
+        "_picturePath",
+        "_pictureStatus",
+        "_regionCode",
+        "_statusMessage",
+        "_thumbnailUrl",
+        "_userid",
+        "_videoProfile",
+        "_musicProfile",
+        "_statusMessageContentMetadata"
+      ],
+      "schema": "CREATE TABLE _profile(_allowSearchByEmail INTEGER, _allowSearchByUserid INTEGER, _displayName TEXT, _email TEXT, _mid TEXT, _phone TEXT, _phoneticName TEXT, _picturePath TEXT, _pictureStatus TEXT, _regionCode TEXT, _statusMessage TEXT, _thumbnailUrl TEXT, _userid TEXT, _videoProfile TEXT, _musicProfile TEXT, _statusMessageContentMetadata TEXT, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_profileMappedId",
+      "rows": 0,
+      "columns": [
+        "_profileId",
+        "_mids"
+      ],
+      "schema": "CREATE TABLE _profileMappedId(_profileId TEXT, _mids TEXT, PRIMARY KEY ( _profileId ) )"
+    },
+    {
+      "name": "_room",
+      "rows": 0,
+      "columns": [
+        "_mid",
+        "_createdTime",
+        "_contacts",
+        "_notificationDisabled",
+        "_invitor",
+        "_memberMids"
+      ],
+      "schema": "CREATE TABLE _room(_mid TEXT, _createdTime INTEGER, _contacts TEXT, _notificationDisabled INTEGER, _invitor TEXT, _memberMids TEXT, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_setting",
+      "rows": 9,
+      "columns": [
+        "_key",
+        "_value"
+      ],
+      "schema": "CREATE TABLE _setting(_key TEXT, _value TEXT, PRIMARY KEY ( _key ) )"
+    },
+    {
+      "name": "_square",
+      "rows": 9,
+      "columns": [
+        "_mid",
+        "_name",
+        "_welcomeMessage",
+        "_profileImageObsHash",
+        "_desc",
+        "_searchable",
+        "_type",
+        "_categoryId",
+        "_invitationURL",
+        "_revision",
+        "_ableToUseInvitationTicket",
+        "_state",
+        "_emblems",
+        "_adultOnly",
+        "_svcTags",
+        "_createdAt",
+        "_authority",
+        "_creatorId",
+        "_status",
+        "_myMemberId",
+        "_featureSet",
+        "_metadata",
+        "_lastJoinRequestAt",
+        "_lastVisitTime",
+        "_noteStatus"
+      ],
+      "schema": "CREATE TABLE _square(_mid TEXT, _name TEXT, _welcomeMessage TEXT, _profileImageObsHash TEXT, _desc TEXT, _searchable INTEGER, _type INTEGER, _categoryId INTEGER, _invitationURL TEXT, _revision INTEGER, _ableToUseInvitationTicket INTEGER, _state INTEGER, _emblems TEXT, _adultOnly INTEGER, _svcTags TEXT, _createdAt INTEGER, _authority TEXT, _creatorId TEXT, _status TEXT, _myMemberId TEXT, _featureSet TEXT, _metadata TEXT, _lastJoinRequestAt INTEGER, _lastVisitTime INTEGER, _noteStatus TEXT, PRIMARY KEY ( _mid ) )"
+    },
+    {
+      "name": "_squareBot",
+      "rows": 1,
+      "columns": [
+        "_botMid",
+        "_active",
+        "_displayName",
+        "_profileImageObsHash",
+        "_iconType",
+        "_lastModifiedAt",
+        "_expiredIn",
+        "_syncTime"
+      ],
+      "schema": "CREATE TABLE _squareBot(_botMid TEXT, _active INTEGER, _displayName TEXT, _profileImageObsHash TEXT, _iconType INTEGER, _lastModifiedAt INTEGER, _expiredIn INTEGER, _syncTime INTEGER, PRIMARY KEY ( _botMid ) )"
+    },
+    {
+      "name": "_squareChat",
+      "rows": 8,
+      "columns": [
+        "_squareChatMid",
+        "_squareMid",
+        "_type",
+        "_name",
+        "_chatImageObsHash",
+        "_squareChatRevision",
+        "_maxMemberCount",
+        "_state",
+        "_status",
+        "_myMember",
+        "_joinedAt",
+        "_announcement",
+        "_featureSet"
+      ],
+      "schema": "CREATE TABLE _squareChat(_squareChatMid TEXT, _squareMid TEXT, _type INTEGER, _name TEXT, _chatImageObsHash TEXT, _squareChatRevision INTEGER, _maxMemberCount INTEGER, _state INTEGER, _status TEXT, _myMember TEXT, _joinedAt INTEGER, _announcement TEXT, _featureSet TEXT, PRIMARY KEY ( _squareChatMid ) )"
+    },
+    {
+      "name": "_squareMember",
+      "rows": 1103,
+      "columns": [
+        "_squareMemberMid",
+        "_squareMid",
+        "_displayName",
+        "_profileImageObsHash",
+        "_ableToReceiveMessage",
+        "_membershipState",
+        "_role",
+        "_revision",
+        "_preference",
+        "_joinMessage",
+        "_relation",
+        "_myMember"
+      ],
+      "schema": "CREATE TABLE _squareMember(_squareMemberMid TEXT, _squareMid TEXT, _displayName TEXT, _profileImageObsHash TEXT, _ableToReceiveMessage INTEGER, _membershipState INTEGER, _role INTEGER, _revision INTEGER, _preference TEXT, _joinMessage TEXT, _relation TEXT, _myMember TEXT, PRIMARY KEY ( _squareMemberMid ) )"
+    },
+    {
+      "name": "_squareThread",
+      "rows": 292,
+      "columns": [
+        "_threadMid",
+        "_chatMid",
+        "_squareMid",
+        "_messageId",
+        "_state",
+        "_expiresAt",
+        "_readOnlyAt",
+        "_revision",
+        "_squareThreadMember",
+        "_totalMessageCount",
+        "_unreadCount",
+        "_lastMessage",
+        "_rootMessage",
+        "_lastMessageAt"
+      ],
+      "schema": "CREATE TABLE _squareThread(_threadMid TEXT, _chatMid TEXT, _squareMid TEXT, _messageId TEXT, _state INTEGER, _expiresAt INTEGER, _readOnlyAt INTEGER, _revision INTEGER, _squareThreadMember TEXT, _totalMessageCount INTEGER, _unreadCount INTEGER, _lastMessage TEXT, _rootMessage TEXT, _lastMessageAt INTEGER, PRIMARY KEY ( _threadMid ) )"
+    },
+    {
+      "name": "_squareToken",
+      "rows": 14,
+      "columns": [
+        "_id",
+        "_token",
+        "_backwardToken",
+        "_timestamp"
+      ],
+      "schema": "CREATE TABLE _squareToken(_id TEXT, _token TEXT, _backwardToken TEXT, _timestamp INTEGER, PRIMARY KEY ( _id ) )"
+    },
+    {
+      "name": "_stickerProductNew",
+      "rows": 21,
+      "columns": [
+        "_id",
+        "_billingItemId",
+        "_billingCpId",
+        "_type",
+        "_subtype",
+        "_name",
+        "_author",
+        "_details",
+        "_copyright",
+        "_notice",
+        "_promotionInfo",
+        "_latestVersion",
+        "_latestVersionString",
+        "_version",
+        "_versionString",
+        "_applicationVersionRange",
+        "_owned",
+        "_grantedByDefault",
+        "_validFor",
+        "_validUntil",
+        "_onSale",
+        "_salesFlags",
+        "_availableForPresent",
+        "_availableForMyself",
+        "_priceTier",
+        "_price",
+        "_priceInLineCoin",
+        "_localizedPrice",
+        "_images",
+        "_attributes",
+        "_authorId",
+        "_stickerResourceType",
+        "_productProperty",
+        "_productSalesState",
+        "_installedTime",
+        "_wishProperty",
+        "_subscriptionProperty",
+        "_productPromotionProperty",
+        "_availableInCountry",
+        "_editorsPickBanners",
+        "_ableToBeGivenAsPresent",
+        "_madeWithStickerMaker",
+        "_customDownloadButtonLabel",
+        "_generatedByAI",
+        "_usageState",
+        "_c_premium"
+      ],
+      "schema": "CREATE TABLE _stickerProductNew(_id TEXT, _billingItemId TEXT, _billingCpId TEXT, _type TEXT, _subtype INTEGER, _name TEXT, _author TEXT, _details TEXT, _copyright TEXT, _notice TEXT, _promotionInfo TEXT, _latestVersion INTEGER, _latestVersionString TEXT, _version INTEGER, _versionString TEXT, _applicationVersionRange TEXT, _owned INTEGER, _grantedByDefault INTEGER, _validFor INTEGER, _validUntil INTEGER, _onSale INTEGER, _salesFlags TEXT, _availableForPresent INTEGER, _availableForMyself INTEGER, _priceTier INTEGER, _price TEXT, _priceInLineCoin TEXT, _localizedPrice TEXT, _images TEXT, _attributes TEXT, _authorId TEXT, _stickerResourceType INTEGER, _productProperty TEXT, _productSalesState INTEGER, _installedTime INTEGER, _wishProperty TEXT, _subscriptionProperty TEXT, _productPromotionProperty TEXT, _availableInCountry INTEGER, _editorsPickBanners TEXT, _ableToBeGivenAsPresent INTEGER, _madeWithStickerMaker INTEGER, _customDownloadButtonLabel TEXT, _generatedByAI INTEGER, _usageState INTEGER, _c_premium INTEGER, PRIMARY KEY ( _id ) )"
+    },
+    {
+      "name": "_sticker_history",
+      "rows": 80,
+      "columns": [
+        "_packageId",
+        "_stickerId",
+        "_message",
+        "_useTime",
+        "_weight"
+      ],
+      "schema": "CREATE TABLE _sticker_history(_packageId INTEGER, _stickerId INTEGER, _message TEXT, _useTime INTEGER, _weight INTEGER, PRIMARY KEY ( _packageId, _stickerId, _message ) )"
+    },
+    {
+      "name": "_sticonProduct",
+      "rows": 3,
+      "columns": [
+        "_id",
+        "_billingItemId",
+        "_billingCpId",
+        "_type",
+        "_subtype",
+        "_name",
+        "_author",
+        "_details",
+        "_copyright",
+        "_notice",
+        "_promotionInfo",
+        "_latestVersion",
+        "_latestVersionString",
+        "_version",
+        "_versionString",
+        "_applicationVersionRange",
+        "_owned",
+        "_grantedByDefault",
+        "_validFor",
+        "_validUntil",
+        "_onSale",
+        "_salesFlags",
+        "_availableForPresent",
+        "_availableForMyself",
+        "_priceTier",
+        "_price",
+        "_priceInLineCoin",
+        "_localizedPrice",
+        "_images",
+        "_attributes",
+        "_authorId",
+        "_stickerResourceType",
+        "_productProperty",
+        "_productSalesState",
+        "_installedTime",
+        "_wishProperty",
+        "_subscriptionProperty",
+        "_productPromotionProperty",
+        "_availableInCountry",
+        "_editorsPickBanners",
+        "_ableToBeGivenAsPresent",
+        "_madeWithStickerMaker",
+        "_customDownloadButtonLabel",
+        "_generatedByAI",
+        "_usageState",
+        "_c_premium"
+      ],
+      "schema": "CREATE TABLE _sticonProduct(_id TEXT, _billingItemId TEXT, _billingCpId TEXT, _type TEXT, _subtype INTEGER, _name TEXT, _author TEXT, _details TEXT, _copyright TEXT, _notice TEXT, _promotionInfo TEXT, _latestVersion INTEGER, _latestVersionString TEXT, _version INTEGER, _versionString TEXT, _applicationVersionRange TEXT, _owned INTEGER, _grantedByDefault INTEGER, _validFor INTEGER, _validUntil INTEGER, _onSale INTEGER, _salesFlags TEXT, _availableForPresent INTEGER, _availableForMyself INTEGER, _priceTier INTEGER, _price TEXT, _priceInLineCoin TEXT, _localizedPrice TEXT, _images TEXT, _attributes TEXT, _authorId TEXT, _stickerResourceType INTEGER, _productProperty TEXT, _productSalesState INTEGER, _installedTime INTEGER, _wishProperty TEXT, _subscriptionProperty TEXT, _productPromotionProperty TEXT, _availableInCountry INTEGER, _editorsPickBanners TEXT, _ableToBeGivenAsPresent INTEGER, _madeWithStickerMaker INTEGER, _customDownloadButtonLabel TEXT, _generatedByAI INTEGER, _usageState INTEGER, _c_premium INTEGER, PRIMARY KEY ( _id ) )"
+    },
+    {
+      "name": "_sticon_mapping",
+      "rows": 0,
+      "columns": [
+        "_productId",
+        "_oldProductId",
+        "_newToOldSticonIdMapping",
+        "_oldPackageVersion",
+        "_oldMetaVersion",
+        "_stickerPackageId",
+        "_stickerPackageVersion",
+        "_stickerIds"
+      ],
+      "schema": "CREATE TABLE _sticon_mapping(_productId TEXT, _oldProductId TEXT, _newToOldSticonIdMapping TEXT, _oldPackageVersion INTEGER, _oldMetaVersion INTEGER, _stickerPackageId INTEGER, _stickerPackageVersion INTEGER, _stickerIds TEXT, PRIMARY KEY ( _productId ) )"
+    },
+    {
+      "name": "_voip_bg",
+      "rows": 0,
+      "columns": [
+        "_bg",
+        "_thumb",
+        "_type"
+      ],
+      "schema": "CREATE TABLE _voip_bg(_bg TEXT, _thumb TEXT, _type INTEGER, PRIMARY KEY ( _bg ) )"
+    }
+  ]
+}

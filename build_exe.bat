@@ -18,6 +18,7 @@ python -m PyInstaller ^
   --onefile ^
   --name "LINE_chat_exporter" ^
   --collect-all openpyxl ^
+  --collect-all cryptography ^
   --hidden-import apsw ^
   --hidden-import line_read_helper ^
   "LINE_chat_exporter.pyw"

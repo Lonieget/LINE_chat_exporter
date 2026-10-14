@@ -24,6 +24,8 @@ def app_base_dir() -> Path:
 
 INDEX_PATTERN = "LINE_聊天室索引*.csv"
 MESSAGES_FILE = "LINE_全部聊天.csv"
+EXPORTS_DIR_NAME = "exports"
+LATEST_RUN_MARKER = "latest_run.txt"
 INDEX_REQUIRED = {"聊天室名稱", "聊天室ID", "類型", "訊息數"}
 MESSAGE_REQUIRED = {
     "聊天室名稱",
@@ -48,15 +50,54 @@ MESSAGE_HEADERS = [
 ]
 
 
+def latest_run_dir(base_dir=None):
+    root = Path(base_dir) if base_dir else app_base_dir()
+    marker = root / EXPORTS_DIR_NAME / LATEST_RUN_MARKER
+    if marker.is_file():
+        text = marker.read_text(encoding="utf-8").strip()
+        if text:
+            path = Path(text)
+            if (path / "LINE_聊天室索引.csv").is_file():
+                return path
+    exports = root / EXPORTS_DIR_NAME
+    if not exports.is_dir():
+        return None
+    runs = sorted(
+        (p for p in exports.iterdir() if p.is_dir() and (p / "LINE_聊天室索引.csv").is_file()),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return runs[0] if runs else None
+
+
 def find_input_files(base_dir):
-    candidates = sorted(base_dir.glob(INDEX_PATTERN))
-    if not candidates:
-        candidates = sorted(base_dir.parent.glob(f"**/{INDEX_PATTERN}"))
+    base_dir = Path(base_dir)
+    run_dir = latest_run_dir(base_dir)
+    search_roots = []
+    if run_dir:
+        search_roots.append(run_dir)
+    search_roots.append(base_dir)
+    for root in search_roots:
+        candidates = sorted(root.glob(INDEX_PATTERN))
+        if candidates:
+            index_path = candidates[0]
+            messages_path = index_path.parent / MESSAGES_FILE
+            return index_path, messages_path if messages_path.exists() else None
+    candidates = sorted(base_dir.glob(f"**/{INDEX_PATTERN}"))
     if not candidates:
         return None, None
-    index_path = candidates[0]
+    index_path = max(candidates, key=lambda path: path.stat().st_mtime)
     messages_path = index_path.parent / MESSAGES_FILE
     return index_path, messages_path if messages_path.exists() else None
+
+
+def parse_run_dir_from_output(text, base_dir=None):
+    for line in reversed((text or "").splitlines()):
+        if line.startswith("RUN_DIR="):
+            path = Path(line.split("=", 1)[1].strip().strip('"'))
+            if path.is_dir():
+                return path
+    return latest_run_dir(base_dir)
 
 
 def read_csv_headers(path):
@@ -234,6 +275,7 @@ class LineChatExporter(tk.Tk):
         self.selected_ids = set()
         self.index_path = None
         self.messages_path = None
+        self.run_dir = None
         self.search_var = tk.StringVar()
         self.category_vars = {
             name: tk.BooleanVar(value=True)
@@ -349,11 +391,12 @@ class LineChatExporter(tk.Tk):
         except Exception as exc:
             messagebox.showerror("無法載入", str(exc))
             return
-        self.index_path = index_path
-        self.messages_path = messages_path
+        self.index_path = Path(index_path)
+        self.messages_path = Path(messages_path)
+        self.run_dir = self.index_path.parent
         self.records = records
         self.selected_ids.clear()
-        self.file_label.config(text=f"已載入：{index_path.name}（{len(records)} 個聊天室）")
+        self.file_label.config(text=f"已載入：{self.run_dir.name}/{self.index_path.name}（{len(records)} 個聊天室）")
         self.status_var.set(f"已載入 {len(records)} 個聊天室，已勾選 0 個")
         self.refresh_tree()
 
@@ -424,6 +467,7 @@ class LineChatExporter(tk.Tk):
     def _update_worker(self, helper):
         try:
             base = app_base_dir()
+            output_text = ""
             if getattr(sys, "frozen", False):
                 import line_read_helper
 
@@ -450,20 +494,34 @@ class LineChatExporter(tk.Tk):
                     errors="replace",
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
+                output_text = (result.stdout or "") + "\n" + (result.stderr or "")
                 if result.returncode != 0:
-                    details = (result.stdout + "\n" + result.stderr).strip()
+                    details = output_text.strip()
                     raise RuntimeError(details or "LINE 資料更新失敗。")
-            index_path = base / "LINE_聊天室索引.csv"
-            messages_path = base / MESSAGES_FILE
-            self.after(0, self._update_success, index_path, messages_path)
+            run_dir = parse_run_dir_from_output(output_text, base)
+            if run_dir is None:
+                raise RuntimeError("更新完成但找不到輸出資料夾（exports/LINE_匯出_*）。")
+            index_path = run_dir / "LINE_聊天室索引.csv"
+            messages_path = run_dir / MESSAGES_FILE
+            if not index_path.is_file() or not messages_path.is_file():
+                raise RuntimeError(f"輸出資料夾不完整：\n{run_dir}")
+            self.after(0, self._update_success, index_path, messages_path, run_dir)
         except Exception as exc:
             self.after(0, self._update_failure, str(exc))
 
-    def _update_success(self, index_path, messages_path):
+    def _update_success(self, index_path, messages_path, run_dir):
         self.update_button.config(state="normal")
         self.export_button.config(state="normal")
+        self.run_dir = Path(run_dir)
         self.load_files(index_path, messages_path)
-        messagebox.showinfo("更新完成", "聊天室索引與聯絡人名稱已更新。")
+        images_dir = self.run_dir / "圖片"
+        image_count = len(list(images_dir.glob("*"))) if images_dir.is_dir() else 0
+        messagebox.showinfo(
+            "更新完成",
+            "已建立本次資料夾（含文字與圖片）：\n"
+            f"{self.run_dir}\n\n"
+            f"圖片檔：{image_count} 個（在「圖片」子資料夾）",
+        )
 
     def _update_failure(self, error):
         self.update_button.config(state="normal")
@@ -479,9 +537,13 @@ class LineChatExporter(tk.Tk):
             messagebox.showinfo("尚未勾選", "請先勾選至少一個聊天室。")
             return
         default_name = f"LINE_聊天匯出_{datetime.now():%Y%m%d_%H%M}.xlsx"
+        initial_dir = str(self.run_dir) if self.run_dir else (
+            str(self.index_path.parent) if self.index_path else str(app_base_dir())
+        )
         output = filedialog.asksaveasfilename(
             title="儲存 Excel 活頁簿",
             defaultextension=".xlsx",
+            initialdir=initial_dir,
             initialfile=default_name,
             filetypes=[("Excel 活頁簿", "*.xlsx")],
         )
