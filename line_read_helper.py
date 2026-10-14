@@ -240,16 +240,20 @@ def inventory(path, key, settings):
 
 TAIPEI = timezone(timedelta(hours=8))
 IMAGES_DIR_NAME = "圖片"
+VIDEOS_DIR_NAME = "影片"
 EXPORTS_DIR_NAME = "exports"
 LATEST_RUN_MARKER = "latest_run.txt"
+# LINE contentType: 1=image/GIF, 2=video (local cache usually only has preview thumb)
+MEDIA_CONTENT_TYPES = {1, "1", 2, "2"}
 
 
 def create_export_run_dir(base_dir=None) -> Path:
-    """Create exports/LINE_匯出_YYYYMMDD_HHMMSS/圖片 for one update run."""
+    """Create exports/LINE_匯出_YYYYMMDD_HHMMSS/{圖片,影片} for one update run."""
     root = Path(base_dir) if base_dir else app_base_dir()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = root / EXPORTS_DIR_NAME / f"LINE_匯出_{stamp}"
     (run_dir / IMAGES_DIR_NAME).mkdir(parents=True, exist_ok=False)
+    (run_dir / VIDEOS_DIR_NAME).mkdir(parents=True, exist_ok=True)
     marker = root / EXPORTS_DIR_NAME / LATEST_RUN_MARKER
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(str(run_dir.resolve()), encoding="utf-8")
@@ -331,41 +335,53 @@ def decrypt_line_media(data: bytes, key_material) -> bytes | None:
     return None
 
 
-def copy_cached_image(message_id, content_info, images_dir: Path):
-    """Copy/decrypt LINE cache thumb for an image message into images_dir.
+def copy_cached_media(message_id, content_info, dest_dir: Path, *, folder_name: str, kind: str):
+    """Copy/decrypt LINE cache media (or preview thumb) into dest_dir.
 
     Returns (relative_path_or_None, status_label).
     """
     info = _parse_json_object(content_info)
     thumb = info.get("thumbPath") or info.get("filePath") or info.get("localPath")
     if not thumb:
-        return None, "圖片（快取未找到）"
+        return None, f"{kind}（快取未找到）"
     source = Path(str(thumb))
     if not source.is_file():
-        return None, "圖片（快取未找到）"
+        return None, f"{kind}（快取未找到）"
 
     try:
         data = source.read_bytes()
     except OSError:
-        return None, "圖片（快取讀取失敗）"
+        return None, f"{kind}（快取讀取失敗）"
 
     plain = decrypt_line_media(data, info.get("keyMaterial"))
     payload = plain if plain is not None else data
     ext = _image_extension_from_bytes(payload) or ".eimg"
-    safe_id = re.sub(r"[^\w.-]+", "_", str(message_id)).strip("._") or "image"
+    safe_id = re.sub(r"[^\w.-]+", "_", str(message_id)).strip("._") or "media"
     target_name = f"{safe_id}{ext}"
-    target = images_dir / target_name
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    target = dest_dir / target_name
     try:
         target.write_bytes(payload)
     except OSError:
-        return None, "圖片（寫入失敗）"
+        return None, f"{kind}（寫入失敗）"
 
-    relative = f"{IMAGES_DIR_NAME}/{target_name}"
-    if plain is not None:
-        return relative, "圖片"
-    if ext == ".eimg":
-        return relative, "圖片（未解密）"
-    return relative, "圖片"
+    relative = f"{folder_name}/{target_name}"
+    if plain is None and ext == ".eimg":
+        return relative, f"{kind}（未解密）"
+    if ext == ".gif":
+        return relative, "GIF"
+    return relative, kind
+
+
+def copy_cached_image(message_id, content_info, images_dir: Path):
+    """Backward-compatible wrapper for image messages."""
+    return copy_cached_media(
+        message_id,
+        content_info,
+        images_dir,
+        folder_name=IMAGES_DIR_NAME,
+        kind="圖片",
+    )
 
 
 def iso_time(value):
@@ -397,9 +413,11 @@ def excel_safe(value):
     return text
 
 
-def content_type_label(content_type, message_text, image_status=None):
+def content_type_label(content_type, message_text, media_status=None):
     if content_type in (1, "1"):
-        return image_status or "圖片"
+        return media_status or "圖片"
+    if content_type in (2, "2"):
+        return media_status or "影片（預覽圖）"
     if message_text:
         return "文字"
     return f"非文字（{content_type}）"
@@ -594,7 +612,9 @@ def export_all_chats(path, key, settings, run_dir=None):
 
         run_dir = Path(run_dir) if run_dir else create_export_run_dir()
         images_dir = run_dir / IMAGES_DIR_NAME
+        videos_dir = run_dir / VIDEOS_DIR_NAME
         images_dir.mkdir(parents=True, exist_ok=True)
+        videos_dir.mkdir(parents=True, exist_ok=True)
 
         index_path = run_dir / "LINE_聊天室索引.csv"
         with index_path.open("w", encoding="utf-8-sig", newline="") as handle:
@@ -644,7 +664,7 @@ def export_all_chats(path, key, settings, run_dir=None):
 
         messages_path = run_dir / "LINE_全部聊天.csv"
         count = 0
-        image_copied = 0
+        media_copied = 0
         with messages_path.open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow([
@@ -699,22 +719,42 @@ def export_all_chats(path, key, settings, run_dir=None):
                 direction = "傳出" if own_mid and sender_mid == own_mid else "收到"
                 sender = "我" if direction == "傳出" else sender_name
                 content_value = message_text
-                image_status = None
+                media_status = None
                 if content_type in (1, "1"):
-                    relative, image_status = copy_cached_image(message_id, content_info, images_dir)
+                    relative, media_status = copy_cached_media(
+                        message_id,
+                        content_info,
+                        images_dir,
+                        folder_name=IMAGES_DIR_NAME,
+                        kind="圖片",
+                    )
                     if relative:
                         content_value = relative
-                        image_copied += 1
+                        media_copied += 1
                     else:
-                        content_value = image_status
-                kind = content_type_label(content_type, message_text, image_status)
+                        content_value = media_status
+                elif content_type in (2, "2"):
+                    # Desktop cache usually stores only the encrypted preview thumb, not the mp4.
+                    relative, media_status = copy_cached_media(
+                        message_id,
+                        content_info,
+                        videos_dir,
+                        folder_name=VIDEOS_DIR_NAME,
+                        kind="影片（預覽圖）",
+                    )
+                    if relative:
+                        content_value = relative
+                        media_copied += 1
+                    else:
+                        content_value = media_status
+                kind = content_type_label(content_type, message_text, media_status)
                 writer.writerow([
                     excel_safe(chat_name), chat_id, taipei_time(created), direction,
                     excel_safe(sender), sender_mid, kind,
                     excel_safe(content_value), message_id,
                 ])
                 count += 1
-        return messages_path, index_path, count, run_dir, image_copied
+        return messages_path, index_path, count, run_dir, media_copied
     finally:
         connection.close()
 
@@ -764,12 +804,15 @@ def main():
             export_path, export_count = export_chat(db_path, key, settings, sys.argv[2])
             print(f"完整聊天：{export_path}（{export_count} 則）")
         elif len(sys.argv) >= 2 and sys.argv[1] == "--export-all":
-            messages_path, index_path, export_count, run_dir, image_copied = export_all_chats(
+            messages_path, index_path, export_count, run_dir, media_copied = export_all_chats(
                 db_path, key, settings
             )
             print(f"全部聊天：{messages_path}（{export_count} 則）")
             print(f"聊天室索引：{index_path}")
-            print(f"圖片檔案：{image_copied} 個 → {run_dir / IMAGES_DIR_NAME}")
+            print(
+                f"媒體檔案：{media_copied} 個 → "
+                f"{run_dir / IMAGES_DIR_NAME} / {run_dir / VIDEOS_DIR_NAME}"
+            )
             print(f"RUN_DIR={run_dir}")
     finally:
         shutil.rmtree(snapshot_dir, ignore_errors=True)

@@ -11,8 +11,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.cell import WriteOnlyCell
+from openpyxl.drawing.image import Image as ExcelImage
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 
 def app_base_dir() -> Path:
@@ -164,26 +165,71 @@ def parse_time(value):
         return value
 
 
-def styled_header_cell(sheet, value):
-    cell = WriteOnlyCell(sheet, value=value)
-    cell.font = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-    cell.fill = PatternFill("solid", fgColor="1F4E78")
-    cell.alignment = Alignment(horizontal="center", vertical="center")
-    return cell
+HEADER_FONT = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+HEADER_FILL = PatternFill("solid", fgColor="1F4E78")
+HEADER_ALIGN = Alignment(horizontal="center", vertical="center")
+DATA_FONT = Font(name="Arial", size=10, color="222222")
+DATA_ALIGN = Alignment(vertical="top", wrap_text=False)
+DATA_WRAP_ALIGN = Alignment(vertical="top", wrap_text=True)
+IMAGE_MAX_WIDTH = 160
+IMAGE_MAX_HEIGHT = 160
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
-def data_cell(sheet, value, *, wrap=False, date=False):
+def style_header_row(sheet, values):
+    sheet.append(list(values))
+    for cell in sheet[1]:
+        cell.font = HEADER_FONT
+        cell.fill = HEADER_FILL
+        cell.alignment = HEADER_ALIGN
+
+
+def write_data_cell(cell, value, *, wrap=False, date=False):
     if isinstance(value, str) and value.startswith(("=", "+", "-", "@")):
         value = "'" + value
-    cell = WriteOnlyCell(sheet, value=value)
-    cell.font = Font(name="Arial", size=10, color="222222")
-    cell.alignment = Alignment(vertical="top", wrap_text=wrap)
+    cell.value = value
+    cell.font = DATA_FONT
+    cell.alignment = DATA_WRAP_ALIGN if wrap else DATA_ALIGN
     if date and isinstance(value, datetime):
         cell.number_format = "yyyy-mm-dd hh:mm:ss"
-    return cell
+
+
+def resolve_message_image(content_value, media_root: Path):
+    """Return image/GIF/video-preview Path if content points to media under media_root."""
+    if not content_value:
+        return None
+    text = str(content_value).strip().replace("/", "\\")
+    candidate = Path(text)
+    if not candidate.is_absolute():
+        candidate = media_root / text
+    if not candidate.is_file():
+        # Also try under 圖片/影片 when CSV only stored the filename.
+        for folder in ("圖片", "影片"):
+            alt = media_root / folder / Path(text).name
+            if alt.is_file():
+                candidate = alt
+                break
+        else:
+            return None
+    if candidate.suffix.lower() not in IMAGE_EXTENSIONS:
+        return None
+    return candidate
+
+
+def embed_image(sheet, image_path: Path, cell_address: str, row_index: int):
+    image = ExcelImage(str(image_path))
+    width = image.width or IMAGE_MAX_WIDTH
+    height = image.height or IMAGE_MAX_HEIGHT
+    scale = min(IMAGE_MAX_WIDTH / width, IMAGE_MAX_HEIGHT / height, 1.0)
+    image.width = max(1, int(width * scale))
+    image.height = max(1, int(height * scale))
+    sheet.add_image(image, cell_address)
+    # Excel row height is in points (~0.75 px).
+    sheet.row_dimensions[row_index].height = max(sheet.row_dimensions[row_index].height or 15, image.height * 0.75 + 8)
 
 
 def export_workbook(index_records, messages_path, selected_ids, output_path, progress=None):
+    messages_path = Path(messages_path)
     if not MESSAGE_REQUIRED.issubset(read_csv_headers(messages_path)):
         raise ValueError("全部聊天檔案欄位不完整。")
 
@@ -191,21 +237,20 @@ def export_workbook(index_records, messages_path, selected_ids, output_path, pro
     if not selected:
         raise ValueError("尚未選取聊天室。")
 
-    workbook = Workbook(write_only=True)
+    media_root = messages_path.parent
+    workbook = Workbook()
+    # Remove the default sheet; we create named sheets explicitly.
+    default_sheet = workbook.active
+    workbook.remove(default_sheet)
+
     used_names = {"聊天室索引"}
     index_sheet = workbook.create_sheet("聊天室索引")
     index_sheet.freeze_panes = "A2"
-    index_sheet.column_dimensions["A"].width = 34
-    index_sheet.column_dimensions["B"].width = 38
-    index_sheet.column_dimensions["C"].width = 12
-    index_sheet.column_dimensions["D"].width = 14
-    index_sheet.column_dimensions["E"].width = 14
-    index_sheet.column_dimensions["F"].width = 21
-    index_sheet.column_dimensions["G"].width = 21
-    index_sheet.append(
-        [styled_header_cell(index_sheet, value) for value in [
-            "聊天室名稱", "聊天室ID", "類別", "類型", "訊息數", "最早訊息", "最新訊息"
-        ]]
+    for letter, width in zip("ABCDEFG", (34, 38, 12, 14, 14, 21, 21)):
+        index_sheet.column_dimensions[letter].width = width
+    style_header_row(
+        index_sheet,
+        ["聊天室名稱", "聊天室ID", "類別", "類型", "訊息數", "最早訊息", "最新訊息"],
     )
 
     sheets = {}
@@ -214,53 +259,78 @@ def export_workbook(index_records, messages_path, selected_ids, output_path, pro
         sheet_name = unique_sheet_name(record["name"], used_names)
         sheet = workbook.create_sheet(sheet_name)
         sheet.freeze_panes = "A2"
-        widths = [21, 10, 24, 38, 17, 80, 38]
-        for index, width in enumerate(widths, start=1):
-            sheet.column_dimensions[chr(64 + index)].width = width
-        sheet.append([styled_header_cell(sheet, value) for value in MESSAGE_HEADERS])
-        sheets[record["id"]] = (sheet, sheet_name)
-        index_sheet.append(
-            [
-                data_cell(index_sheet, record["name"]),
-                data_cell(index_sheet, record["id"]),
-                data_cell(index_sheet, record["category"]),
-                data_cell(index_sheet, record["type"]),
-                data_cell(index_sheet, record["count"]),
-                data_cell(index_sheet, parse_time(record["oldest"]), date=True),
-                data_cell(index_sheet, parse_time(record["newest"]), date=True),
-            ]
-        )
+        for index, width in enumerate((21, 10, 24, 38, 17, 36, 38), start=1):
+            sheet.column_dimensions[get_column_letter(index)].width = width
+        style_header_row(sheet, MESSAGE_HEADERS)
+        sheets[record["id"]] = sheet
+        values = [
+            record["name"],
+            record["id"],
+            record["category"],
+            record["type"],
+            record["count"],
+            parse_time(record["oldest"]),
+            parse_time(record["newest"]),
+        ]
+        index_sheet.append(values)
+        row_no = index_sheet.max_row
+        for col, value in enumerate(values, start=1):
+            write_data_cell(
+                index_sheet.cell(row=row_no, column=col),
+                value,
+                date=col in (6, 7),
+            )
 
     if progress:
-        progress("正在讀取全部聊天資料…")
+        progress("正在讀取全部聊天資料並嵌入圖片…")
 
+    embedded = 0
     with messages_path.open("r", encoding="utf-8-sig", newline="") as handle:
         for row in csv.DictReader(handle):
             chat_id = row.get("聊天室ID", "")
-            target = sheets.get(chat_id)
-            if target is None:
+            sheet = sheets.get(chat_id)
+            if sheet is None:
                 continue
-            sheet, _ = target
             created = parse_time(row.get("時間（台北）", ""))
+            content = row.get("內容", "")
+            image_path = resolve_message_image(content, media_root)
+            display_content = content
+            if image_path is not None:
+                display_content = image_path.name
+
             sheet.append(
                 [
-                    data_cell(sheet, created, date=True),
-                    data_cell(sheet, row.get("方向", "")),
-                    data_cell(sheet, row.get("發言者", "")),
-                    data_cell(sheet, row.get("發言者ID", "")),
-                    data_cell(sheet, row.get("訊息類型", "")),
-                    data_cell(sheet, row.get("內容", ""), wrap=True),
-                    data_cell(sheet, row.get("訊息ID", "")),
+                    created,
+                    row.get("方向", ""),
+                    row.get("發言者", ""),
+                    row.get("發言者ID", ""),
+                    row.get("訊息類型", ""),
+                    display_content,
+                    row.get("訊息ID", ""),
                 ]
             )
+            row_index = sheet.max_row
+            for col in range(1, 8):
+                write_data_cell(
+                    sheet.cell(row=row_index, column=col),
+                    sheet.cell(row=row_index, column=col).value,
+                    wrap=(col == 6 and image_path is None),
+                    date=(col == 1),
+                )
+            if image_path is not None:
+                try:
+                    embed_image(sheet, image_path, f"F{row_index}", row_index)
+                    embedded += 1
+                except Exception:
+                    write_data_cell(sheet.cell(row=row_index, column=6), content, wrap=True)
             counts[chat_id] += 1
 
-    for chat_id, (sheet, _) in sheets.items():
+    for chat_id, sheet in sheets.items():
         sheet.auto_filter.ref = f"A1:G{counts[chat_id] + 1}"
     index_sheet.auto_filter.ref = f"A1:G{len(selected) + 1}"
 
     if progress:
-        progress("正在建立 Excel 活頁簿…")
+        progress(f"正在建立 Excel 活頁簿（已嵌入 {embedded} 張圖片）…")
     workbook.save(output_path)
     return counts
 
@@ -515,12 +585,15 @@ class LineChatExporter(tk.Tk):
         self.run_dir = Path(run_dir)
         self.load_files(index_path, messages_path)
         images_dir = self.run_dir / "圖片"
+        videos_dir = self.run_dir / "影片"
         image_count = len(list(images_dir.glob("*"))) if images_dir.is_dir() else 0
+        video_count = len(list(videos_dir.glob("*"))) if videos_dir.is_dir() else 0
         messagebox.showinfo(
             "更新完成",
-            "已建立本次資料夾（含文字與圖片）：\n"
+            "已建立本次資料夾（含文字／圖片／影片預覽）：\n"
             f"{self.run_dir}\n\n"
-            f"圖片檔：{image_count} 個（在「圖片」子資料夾）",
+            f"圖片／GIF：{image_count} 個（「圖片」）\n"
+            f"影片預覽圖：{video_count} 個（「影片」；本機通常沒有完整 mp4）",
         )
 
     def _update_failure(self, error):
@@ -573,7 +646,9 @@ class LineChatExporter(tk.Tk):
         self.update_selection_status()
         messagebox.showinfo(
             "匯出完成",
-            f"已匯出 {chat_count} 個聊天室、{message_count:,} 則訊息。\n\n{output_path}",
+            f"已匯出 {chat_count} 個聊天室、{message_count:,} 則訊息。\n"
+            "圖片訊息已嵌入 Excel「內容」欄（需先更新資料產生圖片資料夾）。\n\n"
+            f"{output_path}",
         )
 
     def _export_failure(self, error):
