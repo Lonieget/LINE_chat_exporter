@@ -1,0 +1,2 @@
+apsw_sqlite3mc>=3.54.0.0
+openpyxl>=3.1.5

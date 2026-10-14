@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*$py.class
+*.so
+
+# Local vendored packages (use pip + requirements.txt instead)
+vendor/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tooling / IDE
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local / secrets / exports
+*.log
+.env
+.env.*
+*.xlsx
+*.csv
+export/
+exports/
+output/
